@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
+const path = require("path"); // ضيف دي فوق خالص مع الـ requires
 const fs = require("fs");
 if (!fs.existsSync("./uploads")) {
   fs.mkdirSync("./uploads");
@@ -75,8 +76,8 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/skills", require("./routes/skillRoutes"));
 app.use("/api/swaps", require("./routes/swapRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
-app.use("/uploads", express.static("uploads"));
-// تشغيل الـ server
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () =>
   console.log(`Server running on port ${PORT} with Socket.io Support ✅`),
