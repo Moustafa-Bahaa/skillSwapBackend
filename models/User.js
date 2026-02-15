@@ -5,18 +5,17 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    // دول ممكن تسيبهم لو عايز تخزن كلمات دلالية سريعة
+    image: { type: String, default: "uploads/default-avatar.png" }, // الحقل الجديد
     skillsToTeach: [String],
     skillsToLearn: [String],
     pushToken: { type: String, default: "" },
     location: {
       type: { type: String, default: "Point" },
-      coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
+      coordinates: { type: [Number], default: [0, 0] },
     },
   },
   {
     timestamps: true,
-    // مهم جداً عشان الـ Virtuals تظهر لما نبعت البيانات للفرونت إند
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
   },

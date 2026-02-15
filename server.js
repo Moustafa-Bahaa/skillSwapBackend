@@ -4,6 +4,10 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
+const fs = require("fs");
+if (!fs.existsSync("./uploads")) {
+  fs.mkdirSync("./uploads");
+}
 
 const app = express();
 app.use(express.json());
@@ -71,7 +75,7 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/skills", require("./routes/skillRoutes"));
 app.use("/api/swaps", require("./routes/swapRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
-
+app.use("/uploads", express.static("uploads"));
 // تشغيل الـ server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () =>
