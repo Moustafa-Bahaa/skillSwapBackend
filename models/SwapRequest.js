@@ -7,7 +7,21 @@ const SwapRequestSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  skill: { type: mongoose.Schema.Types.ObjectId, ref: "Skill", required: true },
+
+  // المهارة التي يريدها المرسل (المهارة المملوكة للمستلم)
+  skillWanted: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Skill",
+    required: true,
+  },
+
+  // المهارة التي يعرضها المرسل في المقابل (المهارة المملوكة للمرسل)
+  skillOffered: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Skill",
+    required: true,
+  },
+
   status: {
     type: String,
     enum: ["pending", "accepted", "rejected"],
@@ -30,7 +44,7 @@ const SwapRequestSchema = new mongoose.Schema({
   // -----------------------
 
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }, // مفيد لترتيب الشاتات الأحدث فوق
+  updatedAt: { type: Date, default: Date.now },
 });
 
 // تحديث تاريخ updatedAt تلقائياً عند كل تغيير
