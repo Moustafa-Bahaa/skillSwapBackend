@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema(
     image: { type: String, default: "uploads/default-avatar.png" }, // الحقل الجديد
     skillsToTeach: [String],
     skillsToLearn: [String],
+    bio: { type: String, default: "" }, // <--- ضيف السطر ده هنا
     pushToken: { type: String, default: "" },
     location: {
       type: { type: String, default: "Point" },

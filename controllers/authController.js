@@ -95,21 +95,50 @@ exports.getProfile = async (req, res) => {
 // 4. تحديث البروفايل
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, email, bio, location } = req.body;
+    const { name, email, bio, location, password } = req.body;
     const user = await User.findById(req.user.id);
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // 1. تحديث الحقول النصية الأساسية
     if (name) user.name = name;
     if (email) user.email = email;
-    if (bio) user.bio = bio;
+    if (bio !== undefined) user.bio = bio; // عشان لو بعت نص فاضي يمسح البيو القديم
+
+    // 2. تحديث الباسورد (لو تم إرساله)
+    if (password && password.trim() !== "") {
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+    }
+
+    // 3. تحديث اللوكيشن (بيتحول من String لـ GeoJSON Array)
+    if (location) {
+      const coords = location.split(",").map(Number); // بياخد "lng,lat" ويحولها لـ [lng, lat]
+      user.location = {
+        type: "Point",
+        coordinates: coords,
+      };
+    }
+
+    // 4. تحديث الصورة
     if (req.file) {
+      // بنسيف المسار ونظبط السلاش عشان يشتغل ويب وموبايل صح
       user.image = req.file.path.replace(/\\/g, "/");
     }
 
+    // 5. حفظ التعديلات
     const updatedUser = await user.save();
-    res.status(200).json({ message: "Profile updated", user: updatedUser });
+
+    // نرجع بيانات اليوزر ما عدا الباسورد للأمان
+    const userResponse = updatedUser.toObject();
+    delete userResponse.password;
+
+    res.status(200).json({
+      message: "Profile updated successfully ✅",
+      user: userResponse,
+    });
   } catch (error) {
+    console.error("Update Error:", error);
     res.status(500).json({ error: error.message });
   }
 };
