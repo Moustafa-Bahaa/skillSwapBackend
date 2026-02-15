@@ -1,5 +1,5 @@
 const Skill = require("../models/Skill");
-
+const User = require("../models/User"); // تأكد من استدعاء موديل اليوزر
 exports.getAllSkills = async (req, res) => {
   try {
     // بنجيب المهارات ومعاها بيانات المستخدم اللي عاملها (اسمه وإيميله)
@@ -14,7 +14,7 @@ exports.createSkill = async (req, res) => {
   try {
     const { title, description, category } = req.body;
 
-    // req.user جاي من الميدل وير (protect)
+    // 1. إنشاء المهارة
     const newSkill = new Skill({
       title,
       description,
@@ -23,6 +23,12 @@ exports.createSkill = async (req, res) => {
     });
 
     await newSkill.save();
+
+    // 2. التعديل الجوهري: إضافة المهارة لليوزر اللي عملها
+    await User.findByIdAndUpdate(req.user.id, {
+      $push: { skillsToTeach: newSkill._id }, // بيضيف الـ ID الجديد للـ Array
+    });
+
     res.status(201).json(newSkill);
   } catch (error) {
     res.status(400).json({ message: error.message });

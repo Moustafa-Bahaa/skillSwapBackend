@@ -24,11 +24,16 @@ exports.register = async (req, res) => {
 };
 
 // 2. تسجيل الدخول
+// 2. تسجيل الدخول
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    // زودنا populate هنا كمان
+    const user = await User.findOne({ email })
+      .populate("skillsToTeach")
+      .populate("skillsToLearn");
+
     if (!user) {
       return res.status(404).json({ message: "user not found" });
     }
@@ -48,6 +53,8 @@ exports.login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        skillsToTeach: user.skillsToTeach, // هتبعت الداتا كاملة
+        skillsToLearn: user.skillsToLearn,
       },
     });
   } catch (error) {
@@ -84,11 +91,16 @@ exports.updateProfile = async (req, res) => {
 };
 
 // 4. الحصول على بيانات المستخدم الحالي
+// 4. الحصول على بيانات المستخدم الحالي
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user.id)
+      .select("-password")
+      .populate("skillsToTeach") // هيحول الـ IDs لبيانات مهارات كاملة
+      .populate("skillsToLearn");
+
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User found" });
     }
     res.status(200).json(user);
   } catch (error) {
