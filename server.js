@@ -4,20 +4,27 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
-const path = require("path"); // ضيف دي فوق خالص مع الـ requires
+const path = require("path");
 const fs = require("fs");
-if (!fs.existsSync("./uploads")) {
-  fs.mkdirSync("./uploads");
-}
 
 const app = express();
+
+// --- 1. إعداد المجلدات الثابتة (Static) ---
+// التأكد من وجود مجلد uploads
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// إتاحة الوصول للمجلد من خلال الرابط (مهم جداً ترتيبها في البداية)
+app.use("/uploads", express.static(uploadsDir));
+
+// --- 2. Middleware ---
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: "*" }));
 
-// 1. إنشاء الـ HTTP Server
+// --- 3. إنشاء الـ HTTP Server و Socket.io ---
 const server = http.createServer(app);
-
-// 2. إعداد الـ Socket.io
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -25,21 +32,18 @@ const io = new Server(server, {
   },
 });
 
-// حفظ نسخة من io في app لاستخدامها داخل الـ Controllers
 app.set("socketio", io);
 
-// توصيل قاعدة البيانات
+// --- 4. توصيل قاعدة البيانات ---
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("Connected to MongoDB ✅"))
   .catch((err) => console.log("MongoDB Connection Error: ", err));
 
-// ---------------- [ إعداد منطق الـ Socket.io ] ----------------
-
+// --- 5. منطق الـ Socket.io ---
 io.on("connection", (socket) => {
   console.log(`Connected to socket.io: ${socket.id}`);
 
-  // إعداد اليوزر (الروم الشخصية بتاعته عشان الـ Badge)
   socket.on("setup", (userId) => {
     if (userId) {
       socket.join(userId.toString());
@@ -48,19 +52,15 @@ io.on("connection", (socket) => {
     }
   });
 
-  // الانضمام لغرفة شات معينة
   socket.on("joinChat", (requestId) => {
     const roomName = requestId.toString();
     socket.join(roomName);
     console.log(`User joined chat room: ${roomName}`);
   });
 
-  // استقبال وإرسال الرسائل (Real-time داخل الشات)
   socket.on("new message", (newMessageReceived) => {
     const chatRoom = newMessageReceived.swapRequestId;
     if (!chatRoom) return console.log("Chat room not defined");
-
-    // إرسال الرسالة لكل الموجودين في الروم ما عدا الراسل
     socket.in(chatRoom.toString()).emit("message received", newMessageReceived);
   });
 
@@ -69,15 +69,18 @@ io.on("connection", (socket) => {
   });
 });
 
-// -----------------------------------------------------------
-
-// المسارات (Routes)
+// --- 6. المسارات (Routes) ---
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/skills", require("./routes/skillRoutes"));
 app.use("/api/swaps", require("./routes/swapRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// مسار تجريبي للتأكد من أن السيرفر شغال (اختياري)
+app.get("/", (req, res) => {
+  res.send("Server is running and Static folder is ready! 🚀");
+});
+
+// --- 7. تشغيل السيرفر ---
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () =>
   console.log(`Server running on port ${PORT} with Socket.io Support ✅`),
