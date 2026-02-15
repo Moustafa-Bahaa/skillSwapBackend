@@ -7,26 +7,22 @@ exports.register = async (req, res) => {
   try {
     const { name, email, password, location, bio } = req.body;
 
-    // تشفير الباسورد (مهم جداً عشان اللوجين يشتغل)
+    const userExists = await User.findOne({ email });
+    if (userExists)
+      return res.status(400).json({ message: "Email already registered" });
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // استلام مسار الصورة
     let imagePath = "uploads/default-avatar.png";
     if (req.file) {
-      imagePath = req.file.path.replace(/\\/g, "/"); // تحويل الـ backslashes لـ forward slashes عشان الويندوز
+      imagePath = req.file.path.replace(/\\/g, "/");
     }
 
-    // معالجة اللوكيشن
     let userLocation = { type: "Point", coordinates: [0, 0] };
-    if (location) {
-      try {
-        // لو باعتها من الموبايل كـ string "lon,lat"
-        const coords = location.split(",").map(Number);
-        if (coords.length === 2) userLocation.coordinates = coords;
-      } catch (e) {
-        console.log("Location format error");
-      }
+    if (location && typeof location === "string") {
+      const coords = location.split(",").map(Number);
+      if (coords.length === 2) userLocation.coordinates = coords;
     }
 
     const user = await User.create({
@@ -38,7 +34,6 @@ exports.register = async (req, res) => {
       bio,
     });
 
-    // عمل Token فوراً بعد التسجيل
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "30d",
     });
@@ -79,79 +74,63 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.updateProfile = async (req, res) => {
+// 3. الحصول على بيانات المستخدم الحالي (تم الإصلاح هنا)
+exports.getProfile = async (req, res) => {
   try {
-    const { name, email } = req.body;
-    const user = await User.findById(req.user.id);
+    // شيلنا الـ populate مؤقتاً عشان نضمن السرعة
+    const user = await User.findById(req.user.id).select("-password");
 
     if (!user) {
+      // كان مكتوب عندك User found وده غلط، الصح User NOT found
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (name) user.name = name;
-    if (email) user.email = email;
-
-    const updatedUser = await user.save();
-
-    res.status(200).json({
-      message: "Profile updated successfully",
-      user: {
-        id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// 4. الحصول على بيانات المستخدم الحالي
-// 4. الحصول على بيانات المستخدم الحالي
-exports.getProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id)
-      .select("-password")
-      .populate("skillsToTeach") // هيحول الـ IDs لبيانات مهارات كاملة
-      .populate("skillsToLearn");
-
-    if (!user) {
-      return res.status(404).json({ message: "User found" });
-    }
     res.status(200).json(user);
   } catch (error) {
+    console.error("Profile Error:", error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// 5. تحديث توكن الإشعارات (Push Token)
+// 4. تحديث البروفايل
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email, bio, location } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (bio) user.bio = bio;
+    if (req.file) {
+      user.image = req.file.path.replace(/\\/g, "/");
+    }
+
+    const updatedUser = await user.save();
+    res.status(200).json({ message: "Profile updated", user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 5. تحديث توكن الإشعارات
 exports.updatePushToken = async (req, res) => {
   try {
     const { pushToken } = req.body;
     await User.findByIdAndUpdate(req.user.id, { pushToken });
-
-    console.log(`✅ Push Token updated for user: ${req.user.id}`);
-    res.status(200).json({ message: "Push token updated successfully" });
+    res.status(200).json({ message: "Push token updated" });
   } catch (error) {
-    console.error("Error updating push token:", error);
-    res.status(500).json({ error: "Failed to update push token" });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// 6. تسجيل الخروج ومسح التوكن
+// 6. تسجيل الخروج
 exports.logout = async (req, res) => {
   try {
-    // نبحث عن المستخدم ونمسح الـ pushToken لضمان توقف الإشعارات فوراً
-    const user = await User.findById(req.user.id);
-    if (user) {
-      user.pushToken = null;
-      await user.save();
-    }
-
-    console.log(`👋 User ${req.user.id} logged out, push token cleared.`);
+    await User.findByIdAndUpdate(req.user.id, { pushToken: null });
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
-    console.error("Logout Error:", error);
     res.status(500).json({ error: error.message });
   }
 };
