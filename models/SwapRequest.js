@@ -8,19 +8,8 @@ const SwapRequestSchema = new mongoose.Schema({
     required: true,
   },
 
-  // المهارة التي يريدها المرسل (المهارة المملوكة للمستلم)
-  skillWanted: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Skill",
-    required: true,
-  },
-
-  // المهارة التي يعرضها المرسل في المقابل (المهارة المملوكة للمرسل)
-  skillOffered: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Skill",
-    required: true,
-  },
+  // المهارة المطلوبة فقط
+  skill: { type: mongoose.Schema.Types.ObjectId, ref: "Skill", required: true },
 
   status: {
     type: String,
@@ -28,26 +17,16 @@ const SwapRequestSchema = new mongoose.Schema({
     default: "pending",
   },
 
-  // --- حقول الشات الجديدة ---
-  lastMessage: {
-    type: String,
-    default: "",
-  },
-  lastMessageSender: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-  },
-  unreadCount: {
-    type: Number,
-    default: 0,
-  },
+  // --- حقول الشات ---
+  lastMessage: { type: String, default: "" },
+  lastMessageSender: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  unreadCount: { type: Number, default: 0 },
   // -----------------------
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
-// تحديث تاريخ updatedAt تلقائياً عند كل تغيير
 SwapRequestSchema.pre("save", function (next) {
   this.updatedAt = Date.now();
   next();
