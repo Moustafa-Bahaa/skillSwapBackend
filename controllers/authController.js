@@ -79,16 +79,79 @@ exports.login = async (req, res) => {
   }
 };
 
-// باقي الدوال (getProfile, updateProfile, etc.) سيبها زي ما هي عندك بس تأكد إنها متصدرة بـ exports
-exports.getProfile = async (req, res) => {
-  /* كودك القديم */
-};
 exports.updateProfile = async (req, res) => {
-  /* كودك القديم */
+  try {
+    const { name, email } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (name) user.name = name;
+    if (email) user.email = email;
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
+
+// 4. الحصول على بيانات المستخدم الحالي
+// 4. الحصول على بيانات المستخدم الحالي
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .select("-password")
+      .populate("skillsToTeach") // هيحول الـ IDs لبيانات مهارات كاملة
+      .populate("skillsToLearn");
+
+    if (!user) {
+      return res.status(404).json({ message: "User found" });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 5. تحديث توكن الإشعارات (Push Token)
 exports.updatePushToken = async (req, res) => {
-  /* كودك القديم */
+  try {
+    const { pushToken } = req.body;
+    await User.findByIdAndUpdate(req.user.id, { pushToken });
+
+    console.log(`✅ Push Token updated for user: ${req.user.id}`);
+    res.status(200).json({ message: "Push token updated successfully" });
+  } catch (error) {
+    console.error("Error updating push token:", error);
+    res.status(500).json({ error: "Failed to update push token" });
+  }
 };
+
+// 6. تسجيل الخروج ومسح التوكن
 exports.logout = async (req, res) => {
-  /* كودك القديم */
+  try {
+    // نبحث عن المستخدم ونمسح الـ pushToken لضمان توقف الإشعارات فوراً
+    const user = await User.findById(req.user.id);
+    if (user) {
+      user.pushToken = null;
+      await user.save();
+    }
+
+    console.log(`👋 User ${req.user.id} logged out, push token cleared.`);
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.error("Logout Error:", error);
+    res.status(500).json({ error: error.message });
+  }
 };
